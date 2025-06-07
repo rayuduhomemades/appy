@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Appu Assistant</title>
+  <style>
+    body {
+      background: #111;
+      color: #eee;
+      font-family: 'Arial';
+      text-align: center;
+      padding-top: 50px;
+    }
+    #avatar {
+      width: 200px;
+      border-radius: 50%;
+      box-shadow: 0 0 20px #333;
+      transition: transform 0.3s;
+    }
+    #avatar.wag {
+      transform: rotateZ(10deg);
+    }
+    #response {
+      font-size: 1.4em;
+      margin-top: 20px;
+      min-height: 40px;
+    }
+    #mic-btn {
+      margin-top: 30px;
+      font-size: 1.2em;
+      padding: 10px 20px;
+      background: #444;
+      color: white;
+      border: none;
+      border-radius: 10px;
+      cursor: pointer;
+    }
+    #mic-btn:hover {
+      background: #666;
+    }
+    #clock, #weather {
+      margin-top: 20px;
+      font-size: 1.2em;
+      color: #ccc;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>🐾 Meet Appu</h1>
+  <img id="avatar" src="dog-avatar.png" alt="Appu">
+  <div id="response">Say "Appu" to start speaking...</div>
+  <div id="clock"></div>
+  <div id="weather"></div>
+  <button id="mic-btn">🎤 Start Listening</button>
+
+  <audio id="bark" src="bark.mp3" preload="auto"></audio>
+
+  <script>
+    const responseDiv = document.getElementById('response');
+    const bark = document.getElementById('bark');
+    const micBtn = document.getElementById('mic-btn');
+    const avatar = document.getElementById('avatar');
+    const clockDiv = document.getElementById('clock');
+    const weatherDiv = document.getElementById('weather');
+
+    let wakeWord = "appu";
+
+    function animateAvatar() {
+      avatar.classList.add('wag');
+      setTimeout(() => avatar.classList.remove('wag'), 400);
+    }
+
+    function speak(text) {
+      responseDiv.innerHTML = '';
+      [...text].forEach((char, i) => {
+        setTimeout(() => {
+          responseDiv.innerHTML += char;
+        }, 40 * i);
+      });
+      setTimeout(() => {
+        bark.play();
+        animateAvatar();
+      }, 40 * text.length);
+    }
+
+    function processCommand(command) {
+      command = command.toLowerCase();
+      if (command.includes("open whatsapp")) {
+        speak("Opening WhatsApp");
+        window.open("https://web.whatsapp.com", "_blank");
+      } else if (command.includes("play")) {
+        let song = command.replace("play", "").trim();
+        speak("Playing " + song);
+        window.open(`https://www.youtube.com/results?search_query=${encodeURIComponent(song)}`, "_blank");
+      } else if (command.includes("search")) {
+        let query = command.replace("search", "").trim();
+        speak("Searching " + query);
+        window.open(`https://www.google.com/search?q=${encodeURIComponent(query)}`, "_blank");
+      } else if (command.includes("joke")) {
+        speak("Why do dogs run in circles before lying down? Because they’re trying to make a perfect paw-sition!");
+      } else if (command.includes("who are you")) {
+        speak("I am Appu, your loyal assistant. A cute, short, black German Shepherd with brown eyes!");
+      } else if (command.includes("time")) {
+        const now = new Date();
+        const timeStr = now.toLocaleTimeString();
+        speak("The time is " + timeStr);
+      } else if (command.includes("weather")) {
+        speak("Checking weather for your location...");
+        fetch('https://wttr.in/?format=3')
+          .then(res => res.text())
+          .then(data => {
+            speak(data);
+            weatherDiv.innerText = data;
+          })
+          .catch(() => speak("Unable to fetch weather"));
+      } else {
+        speak("Sorry, I didn't understand.");
+      }
+    }
+
+    function updateClock() {
+      const now = new Date();
+      clockDiv.innerText = now.toLocaleTimeString();
+    }
+    setInterval(updateClock, 1000);
+
+    function startRecognition() {
+      const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
+      recognition.lang = "en-US";
+      recognition.continuous = true;
+      recognition.interimResults = false;
+
+      recognition.onresult = (event) => {
+        const transcript = event.results[event.results.length - 1][0].transcript.toLowerCase();
+        if (transcript.includes(wakeWord)) {
+          bark.play();
+          animateAvatar();
+          responseDiv.innerHTML = 'Yes? What do you want me to do?';
+          recognition.stop();
+          setTimeout(() => {
+            const newRecog = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
+            newRecog.lang = "en-US";
+            newRecog.start();
+            newRecog.onresult = (e) => {
+              const command = e.results[0][0].transcript;
+              processCommand(command);
+            };
+          }, 1500);
+        }
+      };
+      recognition.start();
+      responseDiv.innerHTML = "Listening for wake word Appu...";
+    }
+
+    micBtn.addEventListener('click', startRecognition);
+  </script>
+</body>
+</html>
